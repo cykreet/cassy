@@ -1,0 +1,5 @@
+{
+	"yaml.schemas": {
+		"kubernetes://schema/storage.k8s.io/v1%40storageclass": "file:///home/jaden/projects/cassy/cassandra/statefulset.yml"
+	}
+}

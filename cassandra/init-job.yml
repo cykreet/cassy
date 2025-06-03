@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cassandra-init-job
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: cassandra-init
+        image: cassandra:5
+        command:
+        - /bin/bash
+        - -c
+        - |
+          MAX_RETRIES=30
+          RETRY_INTERVAL=5
+          REPLICA_COUNT=3
+          SUCCESS=0
+
+          echo "Waiting"
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            for i in $(seq 0 $((REPLICA_COUNT-1))); do
+              HOST="cassandra-$i.cassandra.default.svc.cluster.local" # haven't tested if this would need to connect to a tailscale ip
+              if cqlsh $HOST 9042 -e "describe keyspaces" > /dev/null 2>&1; then
+                echo "Connected to $HOST"
+                cqlsh $HOST 9042 -f /scripts/data.cql
+                SUCCESS=1
+                break 2
+              fi
+            done
+            sleep $RETRY_INTERVAL
+          done
+
+          if [ "$SUCCESS" -eq 0 ]; then
+            echo "Failed to connect to Cassandra after $MAX_RETRIES attempts."
+            exit 1
+          fi
+        volumeMounts:
+        - name: cql-script
+          mountPath: /scripts/data.cql
+          subPath: data.cql
+      volumes:
+      - name: cql-script
+        configMap:
+          name: cassandra-init-cql

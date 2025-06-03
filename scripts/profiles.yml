@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: profiles
+data:
+  user.yml: |
+            keyspace: user
+
+            keyspace_definition: |
+              CREATE KEYSPACE user WITH replication = {
+                'class': 'NetworkTopologyStrategy', 'DC1': 1
+              };
+
+            table: user_profile
+
+            table_definition: |
+              CREATE TABLE user.user_profile (
+                user_id uuid,
+                username text,
+                email text,
+                first_name text,
+                last_name text,
+                phone text,
+                created_at timestamp,
+                updated_at timestamp,
+                PRIMARY KEY (user_id)
+              );
+
+            columnspec:
+              - name: user_id
+                size: fixed(36)
+                population: uniform(1..1000000)
+              - name: username
+                size: uniform(8..20)
+                population: uniform(1..1000000)
+              - name: email
+                size: uniform(15..50)
+                population: uniform(1..1000000)
+              - name: first_name
+                size: uniform(3..15)
+              - name: last_name
+                size: uniform(3..20)
+              - name: phone
+                size: fixed(12)
+              - name: created_at
+                cluster: uniform(1..100)
+              - name: updated_at
+                cluster: uniform(1..100)
+
+            insert:
+              partitions: fixed(1)
+              batchtype: UNLOGGED
+              select: fixed(1)/1
+
+            queries:
+              profile_lookup:
+                cql: SELECT * FROM user.user_profile WHERE user_id = ?
+                fields: samerow
+              profile_update:
+                cql: UPDATE user.user_profile SET updated_at = ?, phone = ? WHERE user_id = ?
+                fields: samerow
+  product.yml: |
+              keyspace: product
+
+              keyspace_definition: |
+                CREATE KEYSPACE IF NOT EXISTS product WITH replication = {
+                  'class': 'NetworkTopologyStrategy', 'DC1': 2
+                };
+
+              table: products_by_category
+
+              table_definition: |
+                CREATE TABLE product.products_by_category (
+                  category_id uuid,
+                  product_id uuid,
+                  vendor_id uuid,
+                  product_name text,
+                  description text,
+                  current_price decimal,
+                  image_urls list<text>,
+                  rating_avg decimal,
+                  review_count int,
+                  created_at timestamp,
+                  PRIMARY KEY ((category_id), created_at, product_id)
+                ) WITH CLUSTERING ORDER BY (created_at DESC, product_id ASC);
+
+              columnspec:
+                - name: category_id
+                  size: fixed(36)
+                  population: uniform(1..100)
+                - name: product_id
+                  size: fixed(36)
+                  population: uniform(1..10000000)
+                - name: vendor_id
+                  size: fixed(36)
+                  population: uniform(1..50000)
+                - name: product_name
+                  size: uniform(10..100)
+                - name: description
+                  size: uniform(50..500)
+                - name: current_price
+                  size: uniform(1..10000)
+                - name: image_urls
+                  size: uniform(1..5)
+                - name: rating_avg
+                  size: uniform(1..5)
+                - name: review_count
+                  size: uniform(0..1000)
+                - name: created_at
+                  cluster: uniform(1..365) # one year
+
+              insert:
+                partitions: fixed(1)
+                batchtype: UNLOGGED
+                select: fixed(1)/1
+
+              queries:
+                browse_category:
+                  cql: SELECT * FROM product.products_by_category WHERE category_id = ? LIMIT 20
+                  fields: samerow
+                category_pagination:
+                  cql: SELECT * FROM product.products_by_category WHERE category_id = ? AND created_at < ? LIMIT 20
+                  fields: samerow
