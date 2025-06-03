@@ -11,7 +11,7 @@ After that, it seemed like everything should just work baesd on some other examp
 # Quick Setup
 
 1. `kubectl create configmap cassandra-init-cql --from-file=data.cql=scripts/data.cql`
-2. replace the secret in `cassandra/secrets/tailscale-secret.yml` with a base64 encoded ephemeral Tailscale auth key, then `kubectl apply -f cassandra/secrets/tailscale-secret.yml`
+2. replace the secret in `cassandra/secrets/tailscale-secret.yml` with a base64 encoded Tailscale auth key, then `kubectl apply -f cassandra/secrets/tailscale-secret.yml`
 3. `kubectl apply -f cassandra/service.yml`
 4. `kubectl apply -f cassandra/statefulset.yml`
 5. `kubectl apply -f cassandra/init-job.yml`
